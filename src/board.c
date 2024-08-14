@@ -37,12 +37,30 @@ void board_print(Board* b) {
     }
 }
 
-void board_print_bits(u64 board) {
+void board_print_bitboard(u64 board) {
     for_range(i, 0, 64) {
         u64 bit = 1ull << i;
 
         if (bit & board) {
             printf("1 ");
+        } else {
+            printf(". ");
+        }
+        
+        if (i % 8 == 7) printf("\n");
+    }
+}
+
+void board_print_moveset(Moveset* ms) {
+    u8 targets[64] = {0};
+    for_range(i, 0, ms->len) {
+        targets[ms->moves[i].to]++;
+    }
+
+    for_range(i, 0, 64) {
+
+        if (targets[i]) {
+            printf("%d ", targets[i]);
         } else {
             printf(". ");
         }
@@ -167,4 +185,27 @@ u64 board_white_bits(Board* b) {
         b->bitboards[WHITE | QUEEN] |
         b->bitboards[WHITE | BISHOP] |
         b->bitboards[WHITE | KNIGHT];
+}
+
+u64 board_occupied(Board* b) {
+    return board_white_bits(b) | board_black_bits(b);
+}
+
+u8 forceinline board_piece_at(Board* b, u8 square) {
+    return board_piece_at_color(b, square, WHITE);
+}
+
+u8 board_piece_at_color(Board* b, u8 square, u8 color) {
+    u64 bit = 1ull << square;
+    for_range_incl(p, color | PAWN, PIECE_MAX) {
+        if (bit & b->bitboards[p]) return p;
+    }
+    return EMPTY;
+}
+
+u8 board_piece_at_mask(Board* b, u8 mask, u8 color) {
+    for_range_incl(p, color | PAWN, PIECE_MAX) {
+        if (mask & b->bitboards[p]) return p;
+    }
+    return EMPTY;
 }

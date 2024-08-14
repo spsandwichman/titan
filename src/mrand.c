@@ -13,7 +13,7 @@
    This is a 64-bit version of Mersenne Twister pseudorandom number
    generator.
 
-   Before using, initialize the state by using mrand_init_seed(seed)  
+   Before using, initialize the state by using rand_init_seed(seed)  
    or mrand_init_array64(init_key, key_length).
 
    Copyright (C) 2004, Makoto Matsumoto and Takuji Nishimura,
@@ -75,7 +75,7 @@ static u64 mt[NN];
 static int mti=NN+1; 
 
 /* initializes mt[NN] with a seed */
-void mrand_init_seed(u64 seed)
+void rand_init_seed(u64 seed)
 {
     mt[0] = seed;
     for (mti=1; mti<NN; mti++) 
@@ -89,7 +89,7 @@ void mrand_init_array64(u64 init_key[],
 		     u64 key_length)
 {
     u64 i, j, k;
-    mrand_init_seed(19650218ULL);
+    rand_init_seed(19650218ULL);
     i=1; j=0;
     k = (NN>key_length ? NN : key_length);
     for (; k; k--) {
@@ -110,7 +110,7 @@ void mrand_init_array64(u64 init_key[],
 }
 
 /* generates a random number on [0, 2^64-1]-interval */
-u64 mrand_u64(void)
+u64 rand_u64(void)
 {
     int i;
     u64 x;
@@ -118,10 +118,10 @@ u64 mrand_u64(void)
 
     if (mti >= NN) { /* generate NN words at one time */
 
-        /* if mrand_init_seed() has not been called, */
+        /* if rand_init_seed() has not been called, */
         /* a default initial seed is used     */
         if (mti == NN+1) 
-            mrand_init_seed(5489ULL); 
+            rand_init_seed(5489ULL); 
 
         for (i=0;i<NN-MM;i++) {
             x = (mt[i]&UM)|(mt[i+1]&LM);
@@ -150,23 +150,23 @@ u64 mrand_u64(void)
 /* generates a random number on [0, 2^63-1]-interval */
 u64 mrand_u63(void)
 {
-    return (u64)(mrand_u64() >> 1);
+    return (u64)(rand_u64() >> 1);
 }
 
 /* generates a random number on [0,1]-real-interval */
 double mrand_f64_norm(void)
 {
-    return (mrand_u64() >> 11) * (1.0/9007199254740991.0);
+    return (rand_u64() >> 11) * (1.0/9007199254740991.0);
 }
 
 /* generates a random number on [0,1)-real-interval */
 double mrand_f64_norm_excl1(void)
 {
-    return (mrand_u64() >> 11) * (1.0/9007199254740992.0);
+    return (rand_u64() >> 11) * (1.0/9007199254740992.0);
 }
 
 /* generates a random number on (0,1)-real-interval */
 double mrand_f64_norm_excl(void)
 {
-    return ((mrand_u64() >> 12) + 0.5) * (1.0/4503599627370496.0);
+    return ((rand_u64() >> 12) + 0.5) * (1.0/4503599627370496.0);
 }

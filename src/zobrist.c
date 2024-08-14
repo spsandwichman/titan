@@ -9,19 +9,19 @@ u64 zobrist_castle_black_kingside;
 u64 zobrist_white_to_move;
 
 void zobrist_init() {
-    mrand_init_seed(0xDEADBEEFDEADBEEFull);
+    rand_init_seed(0xDEADBEEFDEADBEEFull);
     
     for_range(square, 0, 64) {
         for_range(piece, 0, PIECE_MAX) {
-            zobrist_table[square][piece] = mrand_u64();
+            zobrist_table[square][piece] = rand_u64();
         }
-        zobrist_en_passant[square] = mrand_u64();
+        zobrist_en_passant[square] = rand_u64();
     }
-    zobrist_castle_white_queenside = mrand_u64();
-    zobrist_castle_white_kingside  = mrand_u64();
-    zobrist_castle_black_queenside = mrand_u64();
-    zobrist_castle_black_kingside  = mrand_u64();
-    zobrist_white_to_move = mrand_u64();
+    zobrist_castle_white_queenside = rand_u64();
+    zobrist_castle_white_kingside  = rand_u64();
+    zobrist_castle_black_queenside = rand_u64();
+    zobrist_castle_black_kingside  = rand_u64();
+    zobrist_white_to_move = rand_u64();
 }
 
 u64 zobrist_calculate(Board* b) {

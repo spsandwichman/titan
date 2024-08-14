@@ -5,12 +5,21 @@
 #error "TITAN currently relies on x86-64's BMI2 extension for fast bitboard manipulation."
 #endif
 
+int util_count_ones(u64 i) {
+    return __builtin_popcountll(i);
+}
+
 int util_poplsb(u64* i) {    
     if (*i == 0) return -1;
     
     int index = __builtin_ctzll(*i);
     *i &= *i - 1;
     return index;
+}
+
+int util_lsb(u64 i) {
+    if (i == 0) return -1;
+    return __builtin_ctzll(i);
 }
 
 int util_log2(u64 i) {
@@ -44,4 +53,15 @@ char* util_index_square(u8 square) {
         "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
     };
     return squares[square];
+}
+
+// returns piece type if slider, otherwise return false
+u8 util_is_slider(u8 piece) {
+    u8 type = piece & 0b00000111;
+    switch (type) {
+    case ROOK:
+    case QUEEN:
+    case BISHOP: return type;
+    default: return EMPTY;
+    }
 }

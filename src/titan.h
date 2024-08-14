@@ -20,6 +20,9 @@
 
 #define BOARD_SIZE 64
 
+#define BOARD_FULL 0xFFFFFFFFFFFFFFFFull
+
+
 enum {
     EMPTY = 0,
 
@@ -35,7 +38,7 @@ enum {
 
     PIECE_MAX = (BLACK | KING),
 
-    BITBOARD_MAX = PIECE_MAX,
+    BITBOARD_MAX = PIECE_MAX + 1,
 };
 
 #define EN_PASSANT_NONE 255
@@ -44,9 +47,9 @@ typedef struct Board {
     u64 bitboards[BITBOARD_MAX];
 
     u64 zobrist;
-    u8 en_passant_square;
-    u16 halfmove_clock;
     u32 fullmoves;
+    u16 halfmove_clock;
+    u8 en_passant_square;
 
     bool white_to_move : 1;
     bool white_kingside_castle  : 1;
@@ -56,17 +59,27 @@ typedef struct Board {
 
 } Board;
 
-void board_print(Board* b);
-void board_print_bits(u64 board);
-Board board_default();
-Board board_from_fen(char* fen);
-u64 board_black_bits(Board* b);
-u64 board_white_bits(Board* b);
+enum {
+    SPECIAL_NONE = 0,
+
+    SPECIAL_EN_PASSANT,
+    SPECIAL_DOUBLE_ADVANCE,
+
+    SPECIAL_QUEENSIDE_CASTLE,
+    SPECIAL_KINGSIDE_CASTLE,
+    
+    SPECIAL_PROMOTE_QUEEN,
+    SPECIAL_PROMOTE_KNIGHT,
+    SPECIAL_PROMOTE_BISHOP,
+    SPECIAL_PROMOTE_ROOK,
+};
 
 #define MAX_MOVES 218
 typedef struct Move {
-    u8 from : 4;
-    u8 to   : 4;
+    u8 from : 6;
+    u8 to   : 6;
+    u8 capture : 4;
+    u8 special : 4;
 } Move;
 
 typedef struct Moveset {
@@ -75,14 +88,17 @@ typedef struct Moveset {
 } Moveset;
 
 int util_poplsb(u64* i);
+int util_lsb(u64 i);
+int util_count_ones(u64 i);
 int util_log2(u64 i);
 u64 util_pext(u64 bits, u64 mask);
 u64 util_pdep(u64 bits, u64 mask);
 u8    util_square_index(char* square);
 char* util_index_square(u8 square);
+u8    util_is_slider(u8 piece);
 
-void mrand_init_seed(u64 seed);
-u64  mrand_u64(void);
+void rand_init_seed(u64 seed);
+u64  rand_u64(void);
 
 extern u64 zobrist_table[64][PIECE_MAX];
 extern u64 zobrist_en_passant[64];
@@ -95,7 +111,16 @@ void zobrist_init();
 u64 zobrist_calculate(Board* b);
 
 void move_init();
-u64 move_rook_bitboard(u8 square, u64 enemy, u64 friendly);
-u64 move_bishop_bitboard(u8 square, u64 enemy, u64 friendly);
-u64 move_king_bitboard(u8 square, u64 friendly);
-u64 move_pawn_bitboard(u8 square, bool white, u64 friendly, u64 enemy, u8 en_passant_square);
+void move_generate_valid(Board* b, Moveset* ms, bool only_captures);
+
+void board_print(Board* b);
+void board_print_bitboard(u64 board);
+void board_print_moveset(Moveset* ms);
+Board board_default();
+Board board_from_fen(char* fen);
+u64 board_black_bits(Board* b);
+u64 board_white_bits(Board* b);
+u64 board_occupied(Board* b);
+u8 board_piece_at(Board* b, u8 square);
+u8 board_piece_at_color(Board* b, u8 square, u8 color);
+u8 board_piece_at_mask(Board* b, u8 mask, u8 color);

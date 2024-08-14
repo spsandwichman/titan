@@ -24,6 +24,7 @@ CFLAGS = -mbmi2 -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
 		 -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing \
 		 -Wall -Wno-format -Wno-unused -Werror=incompatible-pointer-types -Wno-discarded-qualifiers
 OPT = -O3 -flto
+# OPT = -O0
 
 FILE_NUM = 0
 
