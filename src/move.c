@@ -80,6 +80,32 @@ u64 forceinline move_get_slider_ray_between(u8 to, u8 from) {
     return move_slider_rays[to][from];
 }
 
+u64 forceinline move_get_rook_slider_ray_between(u8 to, u8 from) {
+    int to_col = to % 8;
+    int to_row = to / 8;
+    int from_col = from % 8;
+    int from_row = from / 8;
+    if (to_col == from_col || to_row == to_col) {
+        return move_slider_rays[to][from];
+    }
+    return 0;
+}
+
+u64 forceinline move_get_bishop_slider_ray_between(u8 to, u8 from) {
+    int to_col = to % 8;
+    int to_row = to / 8;
+    int to_l_diag = to_col - to_row;
+    int to_r_diag = to_col + to_row;
+    int from_col = from % 8;
+    int from_row = from / 8;
+    int from_l_diag = from_col - from_row;
+    int from_r_diag = from_col + from_row;
+    if (to_l_diag == from_l_diag || to_r_diag == from_r_diag) {
+        return move_slider_rays[to][from];
+    }
+    return 0;
+}
+
 void move_init_slider_rays() {
     for_range(to, 0, 64) {
         for_range(from, 0, 64) {
@@ -419,33 +445,33 @@ u64 move_king_danger_squares(Board* b, bool white_to_move) {
     while (enemy_pawns != 0) {
         u8 square = util_poplsb(&enemy_pawns);
         attacked |= move_pawn_bitboard_captures(
-            square, white_to_move, friendly
+            square, !white_to_move, BOARD_FULL
         );
     }
 
     u64 enemy_rooks = b->bitboards[enemy_color | ROOK];
     while (enemy_rooks != 0) {
         u8 square = util_poplsb(&enemy_rooks);
-        attacked |= move_rook_bitboard(square, friendly, 0);
+        attacked |= move_rook_bitboard(square, friendly, enemy);
     }
 
     u64 enemy_bishops = b->bitboards[enemy_color | BISHOP];
     while (enemy_bishops != 0) {
         u8 square = util_poplsb(&enemy_bishops);
-        attacked |= move_bishop_bitboard(square, friendly, 0);
+        attacked |= move_bishop_bitboard(square, friendly, enemy);
     }
 
     u64 enemy_knights = b->bitboards[enemy_color | KNIGHT];
     while (enemy_knights != 0) {
         u8 square = util_poplsb(&enemy_knights);
-        attacked |= move_knight_bitboard(square, 0);
+        attacked |= move_knight_bitboard(square, enemy);
     }
 
     u64 enemy_queens = b->bitboards[enemy_color | QUEEN];
     while (enemy_queens != 0) {
         u8 square = util_poplsb(&enemy_queens);
-        attacked |= move_bishop_bitboard(square, friendly, 0);
-        attacked |= move_rook_bitboard(square, friendly, 0);
+        attacked |= move_bishop_bitboard(square, friendly, enemy);
+        attacked |= move_rook_bitboard(square, friendly, enemy);
     }
 
     return attacked;
@@ -515,7 +541,10 @@ void generate_simple_moves(Board* b, u8 from, u64 moveboard, bool white_move, u6
     }
 }
 
-void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
+// returns true if the current player is in checkmate.
+bool move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
+
+    u64 pinned_move_masks[64];
 
     u64 pinned_pieces = 0;
 
@@ -526,6 +555,7 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
     u64 friendly_board = b->white_to_move ? board_white_bits(b) : board_black_bits(b);
     u8  enemy_color = !b->white_to_move ? WHITE : BLACK;
     u64 enemy_board = !b->white_to_move ? board_white_bits(b) : board_black_bits(b);
+    u64 occupied_board = friendly_board | enemy_board;
 
     u64 push_mask = BOARD_FULL;
     u64 capture_mask = BOARD_FULL;
@@ -537,13 +567,53 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
     }
 
     if (check_count < 2) {
-        pinned_pieces;
+        u8 king_square = util_lsb(b->bitboards[friendly_color | KING]);
+
+        // check rook pins first
+        u64 enemy_rooks = b->bitboards[enemy_color | ROOK];
+        while (enemy_rooks) {
+            u8 enemy_rook_square = util_poplsb(&enemy_rooks);
+
+            u64 ray = move_get_rook_slider_ray_between(king_square, enemy_rook_square);
+
+            // not pinning anything if the slider ray doesn't exist
+            if (!ray) continue;
+            // only care if there's one piece in between the two squares
+            if (util_count_ones(ray & occupied_board) != 1) continue;
+            // only care if that piece is a friendly piece
+            if ((ray & friendly_board) == 0) continue;
+
+            u64 move_mask = ray | (1ull << enemy_rook_square);
+            pinned_move_masks[util_lsb(ray & occupied_board)] = move_mask; // set move mask for pinned piece
+            pinned_pieces |= ray & occupied_board;
+
+            printf("%s pinning %s to %s\n", util_index_square(enemy_rook_square), util_index_square(util_lsb(ray & occupied_board)), util_index_square(king_square));
+        }
+
+        u64 enemy_bishops = b->bitboards[enemy_color | ROOK];
+        while (enemy_bishops) {
+            u8 enemy_bishop_square = util_poplsb(&enemy_bishops);
+
+            u64 ray = move_get_bishop_slider_ray_between(king_square, enemy_bishop_square);
+
+            // not pinning anything if the slider ray doesn't exist
+            if (!ray) continue;
+            // only care if there's one piece in between the two squares
+            if (util_count_ones(ray & occupied_board) != 1) continue;
+            // only care if that piece is a friendly piece
+            if ((ray & friendly_board) == 0) continue;
+
+            u64 move_mask = ray | (1ull << enemy_bishop_square);
+            pinned_move_masks[util_lsb(ray & occupied_board)] = move_mask; // set move mask for pinned piece
+            pinned_pieces |= ray & occupied_board;
+
+            printf("%s pinning %s to %s\n", util_index_square(enemy_bishop_square), util_index_square(util_lsb(ray & occupied_board)), util_index_square(king_square));
+        }
+
         // TODO("calculate absolute pin masks");
     }
 
-    if (check_count == 0) {
-
-    } else if (check_count == 1) {
+    if (check_count == 1) {
         // we can only capture the checking piece
         // OR move in between the checking piece and the king
         // (if the checking piece is a slider)
@@ -551,15 +621,7 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         u8 king_square = util_lsb(b->bitboards[friendly_color | KING]);
         u8 check_square = util_lsb(check_board);
 
-        // u8 check_piece = board_piece_at_mask(b, check_board, enemy_color);
-        // push_mask = 0;
-        // if (util_is_slider(check_piece)) {
-        //     push_mask = move_get_slider_ray_between(check_square, king_square);
-        // }
-
-        // actually, if the checker ISNT a slider, this will always return 0
-        // and since this is just a simple access into a LUT, its faster to
-        // do this anyway instead of checking some complex conditions
+        // returns 0 if a slider ray does not exist between these squares
         push_mask &= move_get_slider_ray_between(check_square, king_square);
 
     } else {
@@ -573,10 +635,8 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         if (king_moves != 0) generate_simple_moves(b, 
             king_square, king_moves, b->white_to_move, 
             enemy_board, ms);
-        return;
+        return ms->len == 0;
     }
-
-    if (pinned_pieces) TODO("yuh");
 
     // generate rook moves
     u64 rooks = b->bitboards[friendly_color | ROOK];
@@ -584,6 +644,8 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         u8 rook_square = util_poplsb(&rooks);
         u64 rook_moves = move_rook_bitboard(rook_square, enemy_board, friendly_board);
         rook_moves &= push_mask | capture_mask;
+        // if pinned, restrict movement
+        if ((1ull << rook_square) & pinned_pieces) rook_moves &= pinned_move_masks[rook_square];
         if (rook_moves) generate_simple_moves(b,
             rook_square, rook_moves, b->white_to_move, 
             enemy_board, ms);
@@ -595,6 +657,8 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         u8 bishop_square = util_poplsb(&bishops);
         u64 bishop_moves = move_bishop_bitboard(bishop_square, enemy_board, friendly_board);
         bishop_moves &= push_mask | capture_mask;
+        // if pinned, restrict movement
+        if ((1ull << bishop_square) & pinned_pieces) bishop_moves &= pinned_move_masks[bishop_square];
         if (bishop_moves) generate_simple_moves(b,
             bishop_square, bishop_moves, b->white_to_move, 
             enemy_board, ms);
@@ -607,6 +671,8 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         u64 queen_moves = move_bishop_bitboard(queen_square, enemy_board, friendly_board)
                         | move_rook_bitboard(queen_square, enemy_board, friendly_board);
         queen_moves &= push_mask | capture_mask;
+        // if pinned, restrict movement
+        if ((1ull << queen_square) & pinned_pieces) queen_moves &= pinned_move_masks[queen_square];
         if (queen_moves) generate_simple_moves(b,
             queen_square, queen_moves, b->white_to_move, 
             enemy_board, ms);
@@ -617,6 +683,8 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         u8 knight_square = util_poplsb(&knights);
         u64 knight_moves = move_knight_bitboard(knight_square, friendly_board);
         knight_moves &= push_mask | capture_mask;
+        // if pinned, it cant move anywhere lmao
+        if ((1ull << knight_square) & pinned_pieces) continue;
         if (knight_moves) generate_simple_moves(b,
             knight_square, knight_moves, b->white_to_move, 
             enemy_board, ms);
@@ -628,6 +696,7 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         u64 pawn_advances = move_pawn_bitboard_advances(
             pawn_square, b->white_to_move, friendly_board, enemy_board);
         pawn_advances &= push_mask;
+        if ((1ull << pawn_square) & pinned_pieces) pawn_advances &= pinned_move_masks[pawn_square];
         while (pawn_advances) {
             u8 target = util_poplsb(&pawn_advances);
             u8 row = target / 8;
@@ -653,6 +722,7 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
             pawn_square, b->white_to_move, enemy_board
         );
         pawn_captures &= capture_mask;
+        if ((1ull << pawn_square) & pinned_pieces) pawn_captures &= pinned_move_masks[pawn_square];
         while (pawn_captures) {
             u8 target = util_poplsb(&pawn_captures);
             u8 row = target / 8;
@@ -674,11 +744,10 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
 
         if (b->en_passant_square != EN_PASSANT_NONE) {
             u64 en_passant_bit = 1ull << b->en_passant_square;
-
             u64 pawn_en_passant_target = move_pawn_bitboard_en_passant(
                 pawn_square, b->white_to_move, b->en_passant_square
-            );
-            if ((en_passant_bit & capture_mask) || (pawn_en_passant_target & push_mask)) {
+            ); 
+            if (!((1ull << pawn_square) & pinned_pieces) && ((en_passant_bit & capture_mask) || (pawn_en_passant_target & push_mask))) {
                 u8 target = util_lsb(pawn_en_passant_target);
                 move_add((Move){
                     .capture = board_piece_at_color(b, target, enemy_color),
@@ -703,17 +772,6 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         );
     }
 
-
-#define bitboard_lit(r0, r1, r2, r3, r4, r5, r6, r7) \
-    ((u64)(r0) << 0) | \
-    ((u64)(r1) << 1*8) | \
-    ((u64)(r2) << 2*8) | \
-    ((u64)(r3) << 3*8) | \
-    ((u64)(r4) << 4*8) | \
-    ((u64)(r5) << 5*8) | \
-    ((u64)(r6) << 6*8) | \
-    ((u64)(r7) << 7*8)
-
     // generate castles
     if (check_count == 0 && b->white_to_move) {
         bool white_can_kingside = b->white_kingside_castle && (
@@ -725,5 +783,5 @@ void move_generate_valid(Board* b, Moveset* ms, bool only_captures) {
         }
     }
 
-
+    return check_count != 0 && ms->len == 0;
 }

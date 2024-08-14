@@ -111,7 +111,7 @@ void zobrist_init();
 u64 zobrist_calculate(Board* b);
 
 void move_init();
-void move_generate_valid(Board* b, Moveset* ms, bool only_captures);
+bool move_generate_valid(Board* b, Moveset* ms, bool only_captures);
 
 void board_print(Board* b);
 void board_print_bitboard(u64 board);
@@ -121,6 +121,7 @@ Board board_from_fen(char* fen);
 u64 board_black_bits(Board* b);
 u64 board_white_bits(Board* b);
 u64 board_occupied(Board* b);
+u64 board_sliders(Board* b, u8 color);
 u8 board_piece_at(Board* b, u8 square);
 u8 board_piece_at_color(Board* b, u8 square, u8 color);
 u8 board_piece_at_mask(Board* b, u8 mask, u8 color);

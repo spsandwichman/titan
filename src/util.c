@@ -1,8 +1,36 @@
 #include "titan.h"
 
 #ifndef TITAN_NATIVE
-// TODO: write fallback functions for non x86-64 BMI2 platforms
-#error "TITAN currently relies on x86-64's BMI2 extension for fast bitboard manipulation."
+#warning "TITAN relies on x86-64's BMI and SSE4 extensions for fast bitboard manipulation."
+#warning "On platforms that do not support these instructions, TITAN will run slower than usual."
+#endif
+
+#ifdef TITAN_NATIVE
+    u64 util_pext(u64 bits, u64 mask) {
+        return _pext_u64(bits, mask);
+    }
+
+    u64 util_pdep(u64 bits, u64 mask) {
+        return _pdep_u64(bits, mask);
+    }
+#else
+    u64 util_pext(u64 bits, u64 mask) {
+        u64 res = 0;
+        for (u64 bb = 1; mask; bb += bb) {
+            if (bits & mask & -mask) res |= bb;
+            mask &= mask - 1;
+        }
+        return res;
+    } 
+
+    u64 util_pdep(u64 bits, u64 mask) {
+        u64 res = 0;
+        for (u64 bb = 1; mask; bb += bb) {
+            if (bits & bb) res |= mask & -mask;
+            mask &= mask - 1;
+        }
+        return res;
+    }
 #endif
 
 int util_count_ones(u64 i) {
@@ -24,14 +52,6 @@ int util_lsb(u64 i) {
 
 int util_log2(u64 i) {
     return __builtin_ctzll(i);
-}
-
-u64 util_pext(u64 bits, u64 mask) {
-    return _pext_u64(bits, mask);
-}
-
-u64 util_pdep(u64 bits, u64 mask) {
-    return _pdep_u64(bits, mask);
 }
 
 u8 util_square_index(char* square) {

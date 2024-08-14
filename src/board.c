@@ -191,6 +191,13 @@ u64 board_occupied(Board* b) {
     return board_white_bits(b) | board_black_bits(b);
 }
 
+u64 board_sliders(Board* b, u8 color) {
+    return 
+        b->bitboards[color | ROOK] |
+        b->bitboards[color | QUEEN] |
+        b->bitboards[color | BISHOP];
+}
+
 u8 forceinline board_piece_at(Board* b, u8 square) {
     return board_piece_at_color(b, square, WHITE);
 }

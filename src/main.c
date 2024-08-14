@@ -17,7 +17,8 @@ int main() {
     // Board b = board_from_fen("3Bk3/3P1P2/2P1Q3/8/8/8/8/8 b - - 0 1");
     // Board b = board_from_fen("3Nk3/8/8/8/8/8/7K/8 w - - 0 1");
     // Board b = board_from_fen("k7/8/8/8/7P/8/7K/8 w - - 0 1");
-    Board b = board_from_fen("8/8/8/1k6/3Pp3/8/8/4KQ2 b - d4 0 1");
+    // Board b = board_from_fen("8/8/8/1k6/3Pp3/8/8/4KQ2 b - d4 0 1");
+    Board b = board_from_fen("8/3k4/8/3p4/8/8/8/3R4 b - - 0 1");
     // Board b = board_default(); 
     board_print(&b);
 
@@ -27,6 +28,4 @@ int main() {
     move_generate_valid(&b, &ms, false);
     newline;
     board_print_moveset(&ms);
-
-    TODO("figure out pinned pieces");
 }

@@ -20,9 +20,10 @@ LD = gcc
 INCLUDEPATHS = -Isrc
 DEBUGFLAGS = -pg -g
 ASANFLAGS = -fsanitize=undefined -fsanitize=address
-CFLAGS = -mbmi2 -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
-		 -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing \
-		 -Wall -Wno-format -Wno-unused -Werror=incompatible-pointer-types -Wno-discarded-qualifiers
+CFLAGS = -mbmi2 -msse4 \
+		-std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
+		-fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing \
+		-Wall -Wno-format -Wno-unused -Werror=incompatible-pointer-types -Wno-discarded-qualifiers
 OPT = -O3 -flto
 # OPT = -O0
 
